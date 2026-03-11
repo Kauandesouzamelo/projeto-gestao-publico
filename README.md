@@ -66,7 +66,7 @@ A API está hospedada na nuvem utilizando Render.
 
 Link da aplicação:
 
-https://producao-calcas-api.onrender.com
+https://projeto-gestao-publico.onrender.com
 
 O deploy é realizado utilizando Docker, garantindo consistência entre ambientes de desenvolvimento e produção.
 
@@ -90,7 +90,7 @@ spring.datasource.password=${SPRING_DATASOURCE_PASSWORD}
 
 1. Clone o repositório:
 
-git clone https://github.com/Kauandesouzamelo/producao-calcas.git
+git clone https://github.com/Kauandesouzamelo/projeto-gestao-publico.git
 
 2. Entre na pasta do projeto:
 
