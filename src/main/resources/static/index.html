@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Calças - KS</title>
+    <style>
+        /* CSS: Deixando com cara de aplicativo igual ao seu desenho */
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; border-radius: 15px; padding: 20px; width: 100%; max-width: 350px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; }
+        input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
+        button { background-color: #3498db; color: white; border: none; font-weight: bold; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #eee; padding: 10px; text-align: center; }
+        .btn-whatsapp { background-color: #25D366; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h3>Produção Total/Mês:</h3>
+    <h2 id="displayTotal" style="color: #2ecc71;">0 Calças</h2>
+</div>
+
+<div class="card">
+    <h4>Nova Produção</h4>
+    <input type="date" id="inputData">
+    <input type="number" id="inputQtd" placeholder="Quantidade de Calças">
+    <select id="selectTamanho">
+        <option value="P">Tamanho P</option>
+        <option value="M">Tamanho M</option>
+        <option value="G">Tamanho G</option>
+        <option value="GG">Tamanho GG</option>
+    </select>
+    <button onclick="enviarLoteParaOJava()">Salvar Lote</button>
+</div>
+
+<div class="card">
+    <h4>Histórico de Produção</h4>
+    <ul id="listaHistorico"></ul> </div>
+
+<div class="card">
+    <h4>Resumo para Fechamento</h4>
+    <table>
+        <thead>
+        <tr>
+            <th>Tam</th>
+            <th>Qtd</th>
+            <th>Valor</th>
+        </tr>
+        </thead>
+        <tbody id="tabelaRelatorio">
+        </tbody>
+    </table>
+    <button class="btn-whatsapp" onclick="enviarZap()">Enviar via WhatsApp</button>
+</div>
+
+<script>
+    // Uma única função para carregar TUDO
+async function carregarDados() {
+    try {
+        // 1. Busca e preenche o HISTÓRICO (Lotes individuais)
+        const resLotes = await fetch('/api/lotes');
+        const lotes = await resLotes.json();
+
+        // Ela compara as datas e coloca o dia 01 antes do dia 02 ordem crescente
+        lotes.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+        const lista = document.getElementById('listaHistorico');
+        if (lista) {
+            lista.innerHTML = "";
+            lotes.forEach(l => {
+                const dataBR = l.data.split('-').reverse().join('/');
+                lista.innerHTML += `<li>📅 ${dataBR} - ${l.tamanho}: ${l.quantidade} calças</li>`;
+            });
+        }
+
+        // 2. Busca e preenche o RESUMO (Tabela agrupada)
+        const resResumo = await fetch('/api/lotes/relatorio');
+        const resumo = await resResumo.json();
+
+        const tabela = document.getElementById('tabelaRelatorio');
+        let totalGeral = 0;
+        tabela.innerHTML = "";
+
+        resumo.forEach(item => {
+            totalGeral += item.quantidadeTotal;
+            tabela.innerHTML += `
+                <tr>
+                    <td>${item.tamanho}</td>
+                    <td>${item.quantidadeTotal}</td>
+                    <td>R$ ${item.valorTotal.toFixed(2)}</td>
+                </tr>`;
+        });
+
+        document.getElementById('displayTotal').innerText = totalGeral + " Calças";
+    } catch (e) { console.error("Erro ao carregar:", e); }
+}
+
+// Envia os dados para o Java
+async function enviarLoteParaOJava() {
+    const dataEscolhida = document.getElementById('inputData').value;
+
+    if(!dataEscolhida) {
+        alert("Selecione uma data primeiro!");
+        return;
+    }
+
+    const novoLote = {
+        quantidade: document.getElementById('inputQtd').value,
+        tamanho: document.getElementById('selectTamanho').value,
+        data: dataEscolhida, // Agora usa a data que VOCÊ escolheu no calendário
+        valorUnitario: 50.0
+    };
+
+    await fetch('/api/lotes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(novoLote)
+    });
+
+    alert("Lote Salvo!");
+    carregarDados(); // Atualiza a tela
+}
+
+// WhatsApp detalhado
+async function enviarZap() {
+    const res = await fetch('/api/lotes');
+    const lotes = await res.json();
+
+    let texto = "*Relatório de Produção KS*\n\n";
+    lotes.forEach(l => {
+        const dataBR = l.data.split('-').reverse().join('/');
+        texto += `📅 ${dataBR} | ${l.tamanho} | ${l.quantidade} un\n`;
+    });
+
+    const total = document.getElementById('displayTotal').innerText;
+    texto += `\n*Total Geral: ${total}*`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+}
+
+// Inicia o site
+carregarDados();
+</script>
+</body>
+</html>
